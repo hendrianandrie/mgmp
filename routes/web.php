@@ -60,6 +60,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Pembelajaran & Bank Soal
     Route::post('/bahan-ajar', [MaterialController::class, 'store'])->name('materials.store');
+    Route::put('/bahan-ajar/{id}', [MaterialController::class, 'update'])->name('materials.update');
     Route::delete('/bahan-ajar/{id}', [MaterialController::class, 'destroy'])->name('materials.destroy');
     Route::post('/bank-soal', [QuestionController::class, 'store'])->name('questions.store');
     Route::delete('/bank-soal/{id}', [QuestionController::class, 'destroy'])->name('questions.destroy');

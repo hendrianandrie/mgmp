@@ -58,7 +58,7 @@
                     <option value="">-- Semua Guru Penyusun --</option>
                     @foreach($members as $m)
                         <option value="{{ $m->id }}" {{ request('member_id') == $m->id ? 'selected' : '' }}>
-                            {{ ($m->gelar_depan ? $m->gelar_depan.' ' : '').$m->nama_lengkap.($m->gelar_belakang ? ', '.$m->gelar_belakang : '') }}
+                            {{ $m->nama_dengan_gelar }}
                         </option>
                     @endforeach
                 </select>
@@ -77,21 +77,30 @@
 <div class="row g-4">
     @forelse($materials as $mat)
         <div class="col-md-6 col-lg-4">
-            <div class="card h-100 border-0 shadow-sm bg-white rounded-4 overflow-hidden hover-top">
-                <div class="card-body p-4 d-flex flex-column">
-                    <div class="d-flex align-items-start gap-3 mb-3">
-                        <div class="rounded-3 bg-primary bg-opacity-10 p-3 text-primary flex-shrink-0">
-                            <i class="fa-solid fa-link fa-2x"></i>
+            <div class="card h-100 border-0 shadow-sm bg-white rounded-4 overflow-hidden hover-top d-flex flex-column">
+                
+                <!-- COVER IMAGE / HEADER BANNER -->
+                <div class="position-relative bg-dark overflow-hidden" style="height: 190px;">
+                    @if($mat->sampul)
+                        <img src="{{ asset('storage/' . $mat->sampul) }}" alt="{{ $mat->judul }}" class="w-100 h-100 object-fit-cover opacity-90 transition-zoom">
+                    @else
+                        <div class="w-100 h-100 d-flex align-items-center justify-content-center text-white" style="background: linear-gradient(135deg, #1e293b 0%, #1e3a8a 50%, #2563eb 100%);">
+                            <i class="fa-solid fa-book-open-reader fs-1 opacity-50"></i>
                         </div>
-                        <div class="flex-grow-1 overflow-hidden">
-                            <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1 small mb-1">Kelas {{ $mat->kelas }}</span>
-                            <h6 class="fw-bold text-dark text-truncate-2 mb-0" title="{{ $mat->judul }}">
-                                {{ $mat->judul }}
-                            </h6>
-                        </div>
+                    @endif
+                    <div class="position-absolute top-0 start-0 m-3">
+                        <span class="badge bg-primary bg-opacity-90 text-white backdrop-blur rounded-pill px-3 py-1 extra-small">
+                            Kelas {{ $mat->kelas }}
+                        </span>
                     </div>
+                </div>
 
-                    <p class="text-muted small flex-grow-1 mb-3">
+                <div class="card-body p-4 d-flex flex-column flex-grow-1">
+                    <h5 class="fw-bold text-dark line-clamp-2 mb-2" title="{{ $mat->judul }}">
+                        {{ $mat->judul }}
+                    </h5>
+
+                    <p class="text-secondary small flex-grow-1 mb-3 line-clamp-3">
                         {{ $mat->deskripsi ?? 'Bahan ajar digital terintegrasi untuk mendukung proses pembelajaran Informatika interaktif.' }}
                     </p>
 
@@ -101,7 +110,7 @@
                         <strong>Penyusun:</strong>
                         @if($mat->penyusun)
                             <span class="fw-semibold text-dark">
-                                {{ ($mat->penyusun->gelar_depan ? $mat->penyusun->gelar_depan.' ' : '').$mat->penyusun->nama_lengkap.($mat->penyusun->gelar_belakang ? ', '.$mat->penyusun->gelar_belakang : '') }}
+                                {{ $mat->penyusun->nama_dengan_gelar }}
                             </span>
                             @if($mat->penyusun->school)
                                 <span class="d-block extra-small text-muted ps-3"><i class="fa-solid fa-school me-1"></i>{{ $mat->penyusun->school->nama_sekolah }}</span>
@@ -119,18 +128,93 @@
                         @endif
 
                         @if(auth()->check() && in_array(auth()->user()->role ?? '', ['superadmin', 'admin', 'pengurus']))
-                            <form method="POST" action="{{ route('materials.destroy', $mat->id) }}" onsubmit="return confirm('Apakah Anda yakin ingin menghapus tautan bahan ajar ini?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-circle" title="Hapus Link">
-                                    <i class="fa-solid fa-trash"></i>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-outline-warning btn-sm rounded-pill px-2" data-bs-toggle="modal" data-bs-target="#modalEditMateri{{ $mat->id }}" title="Edit Bahan Ajar">
+                                    <i class="fa-solid fa-pen-to-square"></i>
                                 </button>
-                            </form>
+                                <form method="POST" action="{{ route('materials.destroy', $mat->id) }}" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus tautan bahan ajar ini?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-2" title="Hapus Link">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         @endif
                     </div>
                 </div>
             </div>
         </div>
+
+        @if(auth()->check() && in_array(auth()->user()->role ?? '', ['superadmin', 'admin', 'pengurus']))
+            <!-- MODAL EDIT BAHAN AJAR -->
+            <div class="modal fade" id="modalEditMateri{{ $mat->id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <form method="POST" action="{{ route('materials.update', $mat->id) }}" enctype="multipart/form-data">
+                        @csrf
+                        @method('PUT')
+                        <div class="modal-content rounded-4 border-0 shadow">
+                            <div class="modal-header border-0 bg-light rounded-top-4">
+                                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-pen-to-square text-warning me-2"></i> Edit Bahan Ajar Digital</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-4 text-start">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Judul Bahan Ajar <span class="text-danger">*</span></label>
+                                    <input type="text" name="judul" class="form-control" value="{{ $mat->judul }}" required>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">Target Kelas <span class="text-danger">*</span></label>
+                                        <select name="kelas" class="form-select" required>
+                                            <option value="7" {{ $mat->kelas == '7' ? 'selected' : '' }}>Kelas 7</option>
+                                            <option value="8" {{ $mat->kelas == '8' ? 'selected' : '' }}>Kelas 8</option>
+                                            <option value="9" {{ $mat->kelas == '9' ? 'selected' : '' }}>Kelas 9</option>
+                                            <option value="Semua" {{ $mat->kelas == 'Semua' ? 'selected' : '' }}>Semua Kelas (7, 8, 9)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">Penyusun / Author (Anggota MGMP)</label>
+                                        <select name="member_id" class="form-select">
+                                            <option value="">-- Pilih Penyusun --</option>
+                                            @foreach($members as $m)
+                                                <option value="{{ $m->id }}" {{ $mat->member_id == $m->id ? 'selected' : '' }}>
+                                                    {{ $m->nama_dengan_gelar }}
+                                                    {{ $m->school ? ' - '.$m->school->nama_sekolah : '' }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Tautan / Link Eksternal <span class="text-danger">*</span></label>
+                                    <input type="url" name="link_external" class="form-control" value="{{ $mat->link_external }}" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Ganti Gambar Sampul / Cover (Opsional)</label>
+                                    <input type="file" name="sampul" class="form-control" accept="image/*">
+                                    <small class="text-muted extra-small">Format: JPG, PNG, WEBP. Maks 5MB.</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Deskripsi Singkat / Ringkasan Materi</label>
+                                    <textarea name="deskripsi" class="form-control" rows="3">{{ $mat->deskripsi }}</textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0 bg-light rounded-bottom-4">
+                                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
+                                <button type="submit" class="btn btn-warning text-dark rounded-pill px-4 fw-semibold">
+                                    <i class="fa-solid fa-save me-1"></i> Simpan Perubahan
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endif
     @empty
         <div class="col-12 py-5 text-center">
             <div class="bg-white rounded-4 p-5 shadow-sm">
@@ -159,14 +243,14 @@
 @if(auth()->check() && in_array(auth()->user()->role ?? '', ['superadmin', 'admin', 'pengurus']))
 <div class="modal fade" id="modalTambahMateri" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <form method="POST" action="{{ route('materials.store') }}">
+        <form method="POST" action="{{ route('materials.store') }}" enctype="multipart/form-data">
             @csrf
             <div class="modal-content rounded-4 border-0 shadow">
-                <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-link text-primary me-2"></i> Tambah Link Bahan Ajar Digital</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header border-0 bg-primary text-white rounded-top-4">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-link me-2"></i> Tambah Link Bahan Ajar Digital</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-4">
+                <div class="modal-body p-4 text-start">
                     <div class="mb-3">
                         <label class="form-label small fw-semibold">Judul Bahan Ajar <span class="text-danger">*</span></label>
                         <input type="text" name="judul" class="form-control" placeholder="Contoh: Slide Interaktif Canva - Berpikir Komputasional" required>
@@ -188,12 +272,18 @@
                                 <option value="">-- Pilih Penyusun --</option>
                                 @foreach($members as $m)
                                     <option value="{{ $m->id }}">
-                                        {{ ($m->gelar_depan ? $m->gelar_depan.' ' : '').$m->nama_lengkap.($m->gelar_belakang ? ', '.$m->gelar_belakang : '') }}
+                                        {{ $m->nama_dengan_gelar }}
                                         {{ $m->school ? ' - '.$m->school->nama_sekolah : '' }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Gambar Sampul / Cover (Opsional)</label>
+                        <input type="file" name="sampul" class="form-control" accept="image/*">
+                        <small class="text-muted extra-small">Format: JPG, PNG, WEBP. Maks 5MB.</small>
                     </div>
 
                     <div class="mb-3">
@@ -207,7 +297,7 @@
                         <textarea name="deskripsi" class="form-control" rows="3" placeholder="Jelaskan secara singkat topik pembelajaran atau panduan penggunaan..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0">
+                <div class="modal-footer border-0 bg-light rounded-bottom-4">
                     <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-primary rounded-pill px-4">
                         <i class="fa-solid fa-save me-1"></i> Simpan Link Bahan Ajar
@@ -218,4 +308,12 @@
     </div>
 </div>
 @endif
+
+<style>
+    .backdrop-blur { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    .transition-zoom { transition: transform 0.4s ease; }
+    .hover-top:hover .transition-zoom { transform: scale(1.06); }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+</style>
 @endsection

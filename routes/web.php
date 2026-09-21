@@ -14,10 +14,28 @@ use App\Http\Controllers\PublicController;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
+
+// Storage Link Web Helper
+Route::get('/symlink', function () {
+    try {
+        Artisan::call('storage:link');
+        return 'Storage link berhasil dibuat!';
+    } catch (\Exception $e) {
+        $target = storage_path('app/public');
+        $shortcut = public_path('storage');
+        if (!file_exists($shortcut)) {
+            @symlink($target, $shortcut);
+            return 'Storage link symlink() berhasil!';
+        }
+        return 'Storage link sudah ada: ' . $e->getMessage();
+    }
+});
 
 // Public Landing Page & Tools
 Route::get('/', [PublicController::class, 'index'])->name('home');
+
 Route::get('/generator-modul', [AiGeneratorController::class, 'index'])->name('generator.index');
 Route::post('/generator-modul', [AiGeneratorController::class, 'generate'])->name('generator.generate');
 Route::post('/generator-soal', [AiGeneratorController::class, 'generateSoal'])->name('generator.generateSoal');
